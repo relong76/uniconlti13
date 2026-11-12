@@ -1,5 +1,6 @@
 package net.unicon.lti.controller.lti;
 
+import java.util.ArrayList;
 import net.unicon.lti.model.PlatformDeployment;
 import net.unicon.lti.repository.AllRepositories;
 import net.unicon.lti.repository.NonceStateRepository;
@@ -402,7 +403,8 @@ public class OIDCControllerTest {
         String response = oidcController.loginInitiations(req, model);
 
         Mockito.verify(platformDeploymentRepository).findByIssAndClientIdAndDeploymentId(eq(null), eq(SAMPLE_CLIENT_ID), eq(SAMPLE_DEPLOYMENT_ID));
-        Mockito.verify(platformDeploymentRepository, never()).findByIssAndClientId(eq(null), eq(SAMPLE_CLIENT_ID));
+        // the unregistered-deployment fallback finds no platform for a missing issuer either
+        Mockito.verify(platformDeploymentRepository).findByIssAndClientId(eq(null), eq(SAMPLE_CLIENT_ID));
         Mockito.verify(platformDeploymentRepository, never()).findByIssAndDeploymentId(eq(null), eq(SAMPLE_DEPLOYMENT_ID));
         Mockito.verify(platformDeploymentRepository, never()).findByIss(eq(null));
         Mockito.verify(req, never()).getSession();
@@ -432,4 +434,29 @@ public class OIDCControllerTest {
         assertTrue(parameters.get("nonce").get(0).length() >= 36);
         assertTrue(parameters.get("state").get(0).length() >= 36);
     }
+
+    @Test
+    public void testLoginInitiationWithUnregisteredDeploymentUsesThePlatform() {
+        // a deployment this tool hasn't seen, such as the installation a course copy creates
+        ReflectionTestUtils.setField(oidcController, "forceCookies", "false");
+        when(req.getParameter("cookies")).thenReturn("false");
+        when(req.getParameter(OIDC_ISS)).thenReturn(SAMPLE_ISS);
+        when(req.getParameter(OIDC_CLIENT_ID)).thenReturn(SAMPLE_CLIENT_ID);
+        when(req.getParameter(OIDC_DEPLOYMENT_ID)).thenReturn(SAMPLE_DEPLOYMENT_ID);
+        when(req.getParameter(OIDC_TARGET_LINK_URI)).thenReturn(SAMPLE_TARGET_URI);
+        when(req.getParameter(OIDC_LTI_MESSAGE_HINT)).thenReturn(SAMPLE_LTI_MESSAGE_HINT);
+        when(req.getParameter(OIDC_LOGIN_HINT)).thenReturn(SAMPLE_LOGIN_HINT);
+        when(platformDeploymentRepository.findByIssAndClientIdAndDeploymentId(any(String.class), any(String.class), any(String.class)))
+                .thenReturn(new ArrayList<>());
+        when(platformDeploymentRepository.findByIssAndClientId(SAMPLE_ISS, SAMPLE_CLIENT_ID)).thenReturn(onePlatformDeployment);
+
+        String response = oidcController.loginInitiations(req, model);
+
+        Mockito.verify(platformDeploymentRepository).findByIssAndClientIdAndDeploymentId(eq(SAMPLE_ISS), eq(SAMPLE_CLIENT_ID), eq(SAMPLE_DEPLOYMENT_ID));
+        Mockito.verify(platformDeploymentRepository).findByIssAndClientId(eq(SAMPLE_ISS), eq(SAMPLE_CLIENT_ID));
+        // nothing is registered from the unsigned login request
+        Mockito.verify(platformDeploymentRepository, never()).save(any());
+        validateOAuthResponse(response, SAMPLE_CLIENT_ID, SAMPLE_DEPLOYMENT_ID, SAMPLE_ISS);
+    }
+
 }

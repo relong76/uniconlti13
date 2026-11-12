@@ -36,3 +36,7 @@ application-local*.properties
 *.p12
 
 *.DS_Store
+# local run settings with secrets
+/application.yml
+# editor settings
+/.vscode/

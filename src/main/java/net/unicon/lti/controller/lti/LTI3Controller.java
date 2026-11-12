@@ -12,6 +12,8 @@
  */
 package net.unicon.lti.controller.lti;
 
+import java.util.Map;
+import net.unicon.lti.service.lti.NoticeService;
 import com.google.common.hash.Hashing;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jws;
@@ -75,6 +77,9 @@ public class LTI3Controller {
     @Autowired
     LtiContextRepository ltiContextRepository;
 
+    @Autowired
+    NoticeService noticeService;
+
     @RequestMapping({"", "/"})
     public String lti3(HttpServletRequest req, Model model) throws DataServiceException, ConnectionException {
         //There is a filter LTI3OAuthProviderProcessingFilter.java that is executed before this.
@@ -118,6 +123,10 @@ public class LTI3Controller {
             }
 
             List<PlatformDeployment> platformDeployment = ltiDataService.getRepos().platformDeploymentRepository.findByIssAndClientIdAndDeploymentId(iss, clientId, ltiDeploymentId);
+            if (platformDeployment.isEmpty()) {
+                // not registered yet (see LTI3Request); every deployment of a platform shares its OIDC endpoint
+                platformDeployment = ltiDataService.getRepos().platformDeploymentRepository.findByIssAndClientId(iss, clientId);
+            }
             if (!platformDeployment.isEmpty()) {
                 model.addAttribute("oidc_authorization_uri", platformDeployment.get(0).getOidcEndpoint());
             } else {
@@ -193,6 +202,7 @@ public class LTI3Controller {
                 model.addAttribute(TextConstants.ERROR, "Invalid Deployment Id");
                 return TextConstants.LTI3ERROR;
             }
+            registerNoticeHandlers(lti3Request);
             //We add the request to the model so it can be displayed. But, in a real application, we would start
             // processing it here to generate the right answer.
             if (ltiDataService.getDemoMode()) {
@@ -241,6 +251,28 @@ public class LTI3Controller {
         } catch (IOException e) {
             model.addAttribute(TextConstants.ERROR, e.getMessage());
             return TextConstants.LTI3ERROR;
+        }
+    }
+
+
+    // if the platform offers course copy notices on this launch, register this tool's handler
+    // for them (in the background, and only once per deployment); never fails the launch
+    void registerNoticeHandlers(LTI3Request lti3Request) {
+        try {
+            if (!(lti3Request.getJws().getPayload().get(LtiStrings.LTI_PLATFORM_NOTIFICATION_SERVICE) instanceof Map<?, ?> pnsClaim)) {
+                return;
+            }
+
+            List<PlatformDeployment> platformDeployments = ltiDataService.getRepos().platformDeploymentRepository
+                .findByIssAndClientIdAndDeploymentId(lti3Request.getIss(), lti3Request.getAud(), lti3Request.getLtiDeploymentId());
+
+            if (platformDeployments.size() == 1) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> claim = (Map<String, Object>) pnsClaim;
+                noticeService.registerContextCopyHandler(platformDeployments.get(0).getKeyId(), claim);
+            }
+        } catch (RuntimeException e) {
+            log.warn("Couldn't start the notice handler registration", e);
         }
     }
 
