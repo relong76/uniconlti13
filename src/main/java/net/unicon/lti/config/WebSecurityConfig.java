@@ -37,10 +37,11 @@ import static org.springframework.security.config.Customizer.withDefaults;
 @RequiredArgsConstructor
 public class WebSecurityConfig {
 
-    @Value("${terracotta.admin.user:admin}")
+    // lti13.admin.*; terracotta.admin.* is still read for settings files written before the rename
+    @Value("${lti13.admin.user:${terracotta.admin.user:admin}}")
     String adminUser;
 
-    @Value("${terracotta.admin.password:admin}")
+    @Value("${lti13.admin.password:${terracotta.admin.password:admin}}")
     String adminPassword;
 
     private LTI3OAuthProviderProcessingFilterStateNonceChecked lti3OAuthProviderProcessingFilterStateNonceChecked;
@@ -87,6 +88,8 @@ public class WebSecurityConfig {
                         .requestMatchers("/config/**").authenticated()
 
                 )
+                // the default answers X-Requested-With: XMLHttpRequest with a plain 401, without
+                // "WWW-Authenticate: Basic", so the admin app can sign in without the browser's login popup
                 .httpBasic(withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .headers(frameOptions -> frameOptions.disable())
@@ -143,7 +146,7 @@ public class WebSecurityConfig {
         // this ensures security context info (Principal, sec:authorize, etc.) is accessible on all paths
         return http.authorizeHttpRequests(authz ->
                         authz
-                                .requestMatchers("/oidc/**", "/registration/**", "/jwks/**", "/deeplink/**", "/ags/**").permitAll()
+                                .requestMatchers("/oidc/**", "/registration/**", "/jwks/**").permitAll()
                                 .anyRequest().permitAll()
                 )
                 .csrf(csrf -> csrf.disable())

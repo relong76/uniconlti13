@@ -1,0 +1,343 @@
+/* The server-rendered LTI pages (launch steps, registration, errors), styled to match the Vue app */
+:root {
+  --primary: #1f5f8b;
+  --primary-tonal: #e4eef5;
+  --secondary: #4f6d7a;
+  --background: #f5f7f9;
+  --surface: #ffffff;
+  --text: rgba(0, 0, 0, 0.87);
+  --muted: rgba(0, 0, 0, 0.6);
+  --border: rgba(0, 0, 0, 0.12);
+  --info: #1f5f8b;
+  --info-tonal: #e4eef5;
+  --warning: #8a5a00;
+  --warning-tonal: #fdf2dc;
+  --error: #b3261e;
+  --error-tonal: #fbe9e8;
+  --success: #2e7d32;
+  --success-tonal: #e7f3e8;
+  --elevation: 0 2px 1px -1px rgba(0, 0, 0, 0.2), 0 1px 1px 0 rgba(0, 0, 0, 0.14), 0 1px 3px 0 rgba(0, 0, 0, 0.12);
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* the page's own display rules (like .form-field's grid) would otherwise show hidden elements */
+[hidden] {
+  display: none !important;
+}
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--text);
+  font-family: Roboto, "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.app-bar {
+  display: flex;
+  align-items: center;
+  height: 56px;
+  padding: 0 20px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 1.25rem;
+  letter-spacing: 0.01em;
+}
+
+.page {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+}
+
+.step {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 4px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.chip.outlined {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+h1 {
+  margin: 0 0 8px;
+  font-size: 1.5rem;
+  font-weight: 400;
+  text-wrap: balance;
+}
+
+h2 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 500;
+}
+
+.lead {
+  margin: 0 0 20px;
+  color: var(--muted);
+  max-width: 70ch;
+}
+
+.card {
+  margin-bottom: 16px;
+  border-radius: 4px;
+  background: var(--surface);
+  box-shadow: var(--elevation);
+  overflow: hidden;
+}
+
+.card-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 16px 8px;
+}
+
+.card-text {
+  padding: 8px 16px 16px;
+}
+
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 16px 16px;
+}
+
+.alert {
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border-radius: 4px;
+  border-left: 4px solid;
+  max-width: 100%;
+}
+
+.alert p {
+  margin: 0;
+}
+
+.alert p + p,
+.alert p + ul {
+  margin-top: 8px;
+}
+
+.alert.info {
+  background: var(--info-tonal);
+  border-color: var(--info);
+}
+
+.alert.warning {
+  background: var(--warning-tonal);
+  border-color: var(--warning);
+}
+
+.alert.error {
+  background: var(--error-tonal);
+  border-color: var(--error);
+}
+
+.alert.success {
+  background: var(--success-tonal);
+  border-color: var(--success);
+}
+
+.alert-title {
+  display: block;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+/* label/value rows */
+.fields {
+  margin: 0;
+}
+
+.fields > div {
+  display: grid;
+  grid-template-columns: minmax(150px, 220px) 1fr;
+  gap: 4px 16px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+
+.fields > div:first-child {
+  border-top: 0;
+}
+
+.fields dt {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.8125rem;
+}
+
+.fields dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+code,
+.mono {
+  font-family: var(--mono);
+  font-size: 0.8125rem;
+  overflow-wrap: anywhere;
+}
+
+.empty {
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* expansion panels */
+details.card > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  cursor: pointer;
+  list-style: none;
+  font-weight: 500;
+}
+
+details.card > summary::-webkit-details-marker {
+  display: none;
+}
+
+details.card > summary::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--muted);
+  border-bottom: 2px solid var(--muted);
+  transform: rotate(45deg);
+  transition: transform 0.2s;
+  flex: none;
+}
+
+details.card[open] > summary::after {
+  transform: rotate(-135deg);
+}
+
+details.card > summary:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+details.card > .card-text {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+/* forms */
+.form-field {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.form-field label {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.8125rem;
+}
+
+.form-field input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid rgba(0, 0, 0, 0.38);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.8125rem;
+}
+
+.form-field input:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: -1px;
+  border-color: transparent;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 4px;
+  background: var(--primary);
+  color: #fff;
+  font: inherit;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  cursor: pointer;
+  box-shadow: var(--elevation);
+}
+
+.btn:hover {
+  filter: brightness(1.08);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.btn.tonal {
+  background: var(--primary-tonal);
+  color: var(--primary);
+  box-shadow: none;
+}
+
+.btn:disabled,
+.btn.disabled {
+  opacity: 0.38;
+  pointer-events: none;
+  cursor: default;
+}
+
+.url {
+  display: block;
+  margin-top: 4px;
+  font-family: var(--mono);
+  font-size: 0.8125rem;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 600px) {
+  .fields > div {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  details.card > summary::after {
+    transition: none;
+  }
+}

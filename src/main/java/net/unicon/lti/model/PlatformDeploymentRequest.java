@@ -10,12 +10,11 @@ public record PlatformDeploymentRequest(String iss, String clientId, String oidc
     public PlatformDeployment toEntity() {
         PlatformDeployment platformDeployment = new PlatformDeployment();
         applyTo(platformDeployment);
-        platformDeployment.setoAuth2TokenAud(oAuth2TokenAud);
         return platformDeployment;
     }
 
     /**
-     * Copies the fields an update changes; the token audience is only set when the deployment is created.
+     * Copies every editable field onto a deployment.
      */
     public void applyTo(PlatformDeployment platformDeployment) {
         platformDeployment.setIss(iss);
@@ -23,6 +22,7 @@ public record PlatformDeploymentRequest(String iss, String clientId, String oidc
         platformDeployment.setOidcEndpoint(oidcEndpoint);
         platformDeployment.setJwksEndpoint(jwksEndpoint);
         platformDeployment.setoAuth2TokenUrl(oAuth2TokenUrl);
+        platformDeployment.setoAuth2TokenAud(oAuth2TokenAud);
         platformDeployment.setDeploymentId(deploymentId);
     }
 

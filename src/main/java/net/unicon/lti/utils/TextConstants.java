@@ -9,14 +9,8 @@ public class TextConstants {
         throw new IllegalStateException("Utility class");
     }
 
-    public static final String NO_ADVANTAGE_TOKEN = "noAdvantageToken";
-    public static final String ADVANTAGE_TOKEN = "advantageToken";
-    public static final String NO_SESSION_VALUES = "noSessionValues";
     public static final String SINGLE = "single";
-    public static final String RESULTS = "results";
-    public static final String LINEITEMS = "lineitems";
     public static final String ERROR = "Error";
-    public static final String HTML_CONTENT = "htmlContent";
     public static final String LTI3_SUFFIX = "/lti3";
     public static final String DEFAULT_KID = "OWNKEY";
     public static final String BEARER = "Bearer ";

@@ -2,6 +2,10 @@ package net.unicon.lti.controller.lti;
 
 import net.unicon.lti.model.PlatformDeployment;
 import net.unicon.lti.model.PlatformDeploymentRequest;
+import net.unicon.lti.repository.ContextCopyNoticeRepository;
+import net.unicon.lti.repository.LtiContextRepository;
+import net.unicon.lti.repository.LtiUserRepository;
+import net.unicon.lti.repository.NoticeSubscriptionRepository;
 import net.unicon.lti.repository.PlatformDeploymentRepository;
 import net.unicon.lti.service.lti.LTIJWTService;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -19,6 +23,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -29,6 +34,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
@@ -43,6 +49,18 @@ public class ConfigurationControllerTest {
 
     @Mock
     private LTIJWTService ltijwtService;
+
+    @Mock
+    private LtiContextRepository ltiContextRepository;
+
+    @Mock
+    private LtiUserRepository ltiUserRepository;
+
+    @Mock
+    private ContextCopyNoticeRepository contextCopyNoticeRepository;
+
+    @Mock
+    private NoticeSubscriptionRepository noticeSubscriptionRepository;
 
     @BeforeEach
     public void setUp() {
@@ -160,7 +178,66 @@ public class ConfigurationControllerTest {
         assertEquals("https://lms.com/oidc", platformDeployment.getOidcEndpoint());
         assertEquals("https://lms.com/jwks", platformDeployment.getJwksEndpoint());
         assertEquals("https://lms.com/token", platformDeployment.getoAuth2TokenUrl());
-        assertEquals("https://lms.com/original-aud", platformDeployment.getoAuth2TokenAud(), "an update keeps the token audience");
+        assertEquals("https://lms.com/aud", platformDeployment.getoAuth2TokenAud());
+    }
+
+    @Test
+    public void testDeleteDeployment() {
+        when(platformDeploymentRepository.existsById(1L)).thenReturn(true);
+
+        ResponseEntity<String> response = configurationController.deleteDeployment(1L);
+
+        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+        assertNull(response.getBody());
+        Mockito.verify(platformDeploymentRepository).deleteById(1L);
+    }
+
+    @Test
+    public void testDeleteDeploymentNotFound() {
+        when(platformDeploymentRepository.existsById(1L)).thenReturn(false);
+
+        ResponseEntity<String> response = configurationController.deleteDeployment(1L);
+
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+        assertEquals("Unable to delete. Platform deployment with id 1 not found", response.getBody());
+        Mockito.verify(platformDeploymentRepository, never()).deleteById(any());
+    }
+
+    @Test
+    public void testDeleteDeploymentInUseListsWhatUsesIt() {
+        when(platformDeploymentRepository.existsById(1L)).thenReturn(true);
+        when(ltiContextRepository.countByPlatformDeployment_KeyId(1L)).thenReturn(1L);
+        when(ltiUserRepository.countByPlatformDeployment_KeyId(1L)).thenReturn(12L);
+        when(contextCopyNoticeRepository.countByKeyId(1L)).thenReturn(2L);
+        when(noticeSubscriptionRepository.countByKeyId(1L)).thenReturn(1L);
+
+        ResponseEntity<String> response = configurationController.deleteDeployment(1L);
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertEquals("Unable to delete. Platform deployment 1 is still used by 1 course, 12 users, 2 course copy notices, 1 notice subscription.", response.getBody());
+        Mockito.verify(platformDeploymentRepository, never()).deleteById(any());
+    }
+
+    @Test
+    public void testDeleteDeploymentUsedOnlyByUsers() {
+        when(platformDeploymentRepository.existsById(1L)).thenReturn(true);
+        when(ltiUserRepository.countByPlatformDeployment_KeyId(1L)).thenReturn(1L);
+
+        ResponseEntity<String> response = configurationController.deleteDeployment(1L);
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertEquals("Unable to delete. Platform deployment 1 is still used by 1 user.", response.getBody());
+    }
+
+    @Test
+    public void testDeleteDeploymentRefusedByTheDatabase() {
+        when(platformDeploymentRepository.existsById(1L)).thenReturn(true);
+        doThrow(new DataIntegrityViolationException("FK_LTI_CONTEXT_ON_KEY")).when(platformDeploymentRepository).deleteById(1L);
+
+        ResponseEntity<String> response = configurationController.deleteDeployment(1L);
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertEquals("Unable to delete. Other records still refer to platform deployment 1.", response.getBody());
     }
 
     @Test

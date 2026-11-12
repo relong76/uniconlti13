@@ -4,17 +4,23 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.unicon.lti.model.PlatformDeployment;
 import net.unicon.lti.model.PlatformDeploymentRequest;
+import net.unicon.lti.repository.ContextCopyNoticeRepository;
+import net.unicon.lti.repository.LtiContextRepository;
+import net.unicon.lti.repository.LtiUserRepository;
+import net.unicon.lti.repository.NoticeSubscriptionRepository;
 import net.unicon.lti.repository.PlatformDeploymentRepository;
 import net.unicon.lti.service.lti.LTIJWTService;
 import net.unicon.lti.utils.TextConstants;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -27,6 +33,7 @@ import org.springframework.web.bind.annotation.ResponseBody;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -47,6 +54,14 @@ public class ConfigurationController {
     private final PlatformDeploymentRepository platformDeploymentRepository;
 
     private final LTIJWTService ltijwtService;
+
+    private final LtiContextRepository ltiContextRepository;
+
+    private final LtiUserRepository ltiUserRepository;
+
+    private final ContextCopyNoticeRepository contextCopyNoticeRepository;
+
+    private final NoticeSubscriptionRepository noticeSubscriptionRepository;
 
     @GetMapping(value = "/", produces = "application/json;")
     @ResponseBody
@@ -106,6 +121,47 @@ public class ConfigurationController {
 
         platformDeploymentRepository.saveAndFlush(platformDeploymentToChange);
         return new ResponseEntity<>(platformDeploymentToChange, HttpStatus.OK);
+    }
+
+    /**
+     * Deletes a deployment nothing refers to yet. Courses and users have foreign keys to it, and notices and
+     * notice subscriptions keep its key id, so a deployment that has been launched answers 409 instead.
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> deleteDeployment(@PathVariable("id") long id) {
+        if (!platformDeploymentRepository.existsById(id)) {
+            log.error("Unable to delete. PlatformDeployment with id {} not found.", id);
+            return new ResponseEntity<>("Unable to delete. Platform deployment with id " + id + TextConstants.NOT_FOUND_SUFFIX, HttpStatus.NOT_FOUND);
+        }
+
+        List<String> uses = new ArrayList<>();
+        addUse(uses, ltiContextRepository.countByPlatformDeployment_KeyId(id), "course", "courses");
+        addUse(uses, ltiUserRepository.countByPlatformDeployment_KeyId(id), "user", "users");
+        addUse(uses, contextCopyNoticeRepository.countByKeyId(id), "course copy notice", "course copy notices");
+        addUse(uses, noticeSubscriptionRepository.countByKeyId(id), "notice subscription", "notice subscriptions");
+
+        if (!uses.isEmpty()) {
+            log.warn("Not deleting PlatformDeployment {}: still in use by {}", id, uses);
+            return new ResponseEntity<>("Unable to delete. Platform deployment " + id + " is still used by "
+                    + String.join(", ", uses) + ".", HttpStatus.CONFLICT);
+        }
+
+        try {
+            platformDeploymentRepository.deleteById(id);
+        } catch (DataIntegrityViolationException e) {
+            // a launch can add a course or user between the checks and the delete
+            log.warn("Not deleting PlatformDeployment {}: {}", id, e.getMessage());
+            return new ResponseEntity<>("Unable to delete. Other records still refer to platform deployment " + id + ".", HttpStatus.CONFLICT);
+        }
+
+        log.info("Deleted PlatformDeployment {}", id);
+        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    }
+
+    private static void addUse(List<String> uses, long count, String singular, String plural) {
+        if (count > 0) {
+            uses.add(count + " " + (count == 1 ? singular : plural));
+        }
     }
 
     @RequestMapping(value = "/lti_advantage/client_assertion", method = RequestMethod.POST, consumes = {MediaType.APPLICATION_JSON_VALUE})

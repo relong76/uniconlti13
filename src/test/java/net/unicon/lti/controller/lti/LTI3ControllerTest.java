@@ -1,5 +1,14 @@
 package net.unicon.lti.controller.lti;
 
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verify;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import java.util.Map;
+import org.mockito.ArgumentCaptor;
+import net.unicon.lti.service.app.LaunchStore;
+import net.unicon.lti.model.ToolLink;
+import net.unicon.lti.model.LaunchRecord;
 import java.util.List;
 import java.util.ArrayList;
 import com.google.common.hash.Hashing;
@@ -83,7 +92,7 @@ public class LTI3ControllerTest {
     private LtiContextRepository ltiContextRepository;
 
     @Mock
-    private DeepLinkService deepLinkService;
+    private LaunchStore launchStore;
 
     @Mock
     private NonceStateRepository nonceStateRepository;
@@ -220,118 +229,8 @@ public class LTI3ControllerTest {
         }
     }
 
-    @Test
-    public void testLTI3DemoModeOff() {
-        try {
-            when(claims.get("clientId")).thenReturn("client-id-1");
-            when(claims.get("ltiDeploymentId")).thenReturn("deployment-id-1");
-            when(lti3Request.getAud()).thenReturn("client-id-1");
-            when(lti3Request.getLtiDeploymentId()).thenReturn("deployment-id-1");
-            when(ltiDataService.getDemoMode()).thenReturn(false);
-            when(lti3Request.getLtiTargetLinkUrl()).thenReturn("https://tool.com/test");
-            String tohash = ID_TOKEN + HASH_STATE + NONCE;
-            String expected_hash = Hashing.sha256()
-                    .hashString(tohash, StandardCharsets.UTF_8)
-                    .toString();
-            when(claims.get("expected_hash")).thenReturn(expected_hash);
-            when(req.getParameter("token")).thenReturn(TOKEN);
-            when(ltijwtService.validateNonceState(any(String.class))).thenReturn(jwsClaims);
-            when(jwsClaims.getBody()).thenReturn(claims);
-            NonceState nonceState = new NonceState(NONCE, HASH_STATE, VALID_STATE, "_parent");
-            when(nonceStateRepository.findByStateHash(any(String.class))).thenReturn(nonceState);
 
-            KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
-            kpg.initialize(1024);
-            KeyPair kp = kpg.generateKeyPair();
-            Base64.Encoder encoder = Base64.getEncoder();
-            String privateKey = "-----BEGIN PRIVATE KEY-----\n" + encoder.encodeToString(kp.getPrivate().getEncoded()) + "\n-----END PRIVATE KEY-----\n";
-            when(ltiDataService.getOwnPrivateKey()).thenReturn(privateKey);
-            when(lti3Request.getClaims()).thenReturn(claims);
 
-            String response = lti3Controller.lti3checked(req, model);
-
-            Mockito.verify(ltijwtService).validateState(VALID_STATE);
-            Mockito.verify(ltiDataService).getDemoMode();
-            Mockito.verify(apijwtService).buildJwt(eq(true), eq(lti3Request));
-            assertTrue(response.contains("redirect:/app/app.html?token="));
-
-        } catch (DataServiceException | ConnectionException | GeneralSecurityException | IOException e) {
-            fail("Exception should not be thrown.");
-        }
-    }
-
-    @Test
-    public void testLTI3DemoModeOffWithoutClientIdOrDeploymentIdInState() {
-        try {
-            when(claims.get("clientId")).thenReturn(null);
-            when(claims.get("ltiDeploymentId")).thenReturn(null);
-            when(lti3Request.getAud()).thenReturn("client-id-1");
-            when(lti3Request.getLtiDeploymentId()).thenReturn("deployment-id-1");
-            when(ltiDataService.getDemoMode()).thenReturn(false);
-            when(lti3Request.getLtiTargetLinkUrl()).thenReturn("https://tool.com/test");
-            String tohash = ID_TOKEN + HASH_STATE + NONCE;
-            String expected_hash = Hashing.sha256()
-                    .hashString(tohash, StandardCharsets.UTF_8)
-                    .toString();
-            when(claims.get("expected_hash")).thenReturn(expected_hash);
-            when(req.getParameter("token")).thenReturn(TOKEN);
-            when(ltijwtService.validateNonceState(any(String.class))).thenReturn(jwsClaims);
-            when(jwsClaims.getBody()).thenReturn(claims);
-            NonceState nonceState = new NonceState(NONCE, HASH_STATE, VALID_STATE, "_parent");
-            when(nonceStateRepository.findByStateHash(any(String.class))).thenReturn(nonceState);
-
-            KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
-            kpg.initialize(1024);
-            KeyPair kp = kpg.generateKeyPair();
-            Base64.Encoder encoder = Base64.getEncoder();
-            String privateKey = "-----BEGIN PRIVATE KEY-----\n" + encoder.encodeToString(kp.getPrivate().getEncoded()) + "\n-----END PRIVATE KEY-----\n";
-            when(ltiDataService.getOwnPrivateKey()).thenReturn(privateKey);
-            when(lti3Request.getClaims()).thenReturn(claims);
-
-            String response = lti3Controller.lti3checked(req, model);
-
-            Mockito.verify(ltijwtService).validateState(VALID_STATE);
-            Mockito.verify(ltiDataService).getDemoMode();
-            Mockito.verify(apijwtService).buildJwt(eq(true), eq(lti3Request));
-            assertTrue(response.contains("redirect:/app/app.html?token="));
-
-        } catch (DataServiceException | ConnectionException | GeneralSecurityException | IOException e) {
-            fail("Exception should not be thrown.");
-        }
-    }
-
-    @Test
-    public void testLTI3DemoModeOn() {
-        try {
-            when(claims.get("clientId")).thenReturn("client-id-1");
-            when(claims.get("ltiDeploymentId")).thenReturn("deployment-id-1");
-            when(lti3Request.getAud()).thenReturn("client-id-1");
-            when(lti3Request.getLtiDeploymentId()).thenReturn("deployment-id-1");
-            when(lti3Request.getContext()).thenReturn(ltiContextEntity);
-            when(lti3Request.getLtiMessageType()).thenReturn(LtiStrings.LTI_MESSAGE_TYPE_RESOURCE_LINK);
-            when(lti3Request.getLtiTargetLinkUrl()).thenReturn("https://tool.com/test");
-            when(ltiDataService.getDemoMode()).thenReturn(true);
-            String tohash = ID_TOKEN + HASH_STATE + NONCE;
-            String expected_hash = Hashing.sha256()
-                    .hashString(tohash, StandardCharsets.UTF_8)
-                    .toString();
-            when(claims.get("expected_hash")).thenReturn(expected_hash);
-            when(req.getParameter("token")).thenReturn(TOKEN);
-            when(ltijwtService.validateNonceState(any(String.class))).thenReturn(jwsClaims);
-            when(jwsClaims.getBody()).thenReturn(claims);
-            NonceState nonceState = new NonceState(NONCE, HASH_STATE, VALID_STATE, "_parent");
-            when(nonceStateRepository.findByStateHash(any(String.class))).thenReturn(nonceState);
-
-            String finalResponse = lti3Controller.lti3checked(req, model);
-
-            Mockito.verify(ltijwtService).validateState(VALID_STATE);
-            Mockito.verify(ltiDataService).getDemoMode();
-            assertEquals(finalResponse, "lti3Result");
-
-        } catch (DataServiceException | ConnectionException e) {
-            fail("Exception should not be thrown.");
-        }
-    }
 
     @Test
     public void testLTI3WithUnregisteredDeploymentUsesThePlatformOidcEndpoint() throws DataServiceException, ConnectionException {
@@ -409,60 +308,9 @@ public class LTI3ControllerTest {
         assertEquals("Nonce retrieved and the expected nonce don't match", model.getAttribute(TextConstants.ERROR));
     }
 
-    @Test
-    public void testLTI3checkedDemoModeWithoutRequestedLink() throws Exception {
-        givenValidCheckedRequest();
-        when(apijwtService.buildJwt(false, lti3Request)).thenReturn("advantage-token");
 
-        assertEquals("lti3Result", lti3Controller.lti3checked(req, model));
 
-        assertEquals("<b> No element was requested or it doesn't exists </b>", model.getAttribute(TextConstants.HTML_CONTENT));
-        assertEquals("advantage-token", model.getAttribute(TextConstants.ADVANTAGE_TOKEN));
-        assertEquals(lti3Request, model.getAttribute("lti3Request"));
-        Mockito.verify(ltiLinkRepository, Mockito.never()).findByLtiLinkIdAndToolLinkToolLinkIdAndContext(any(), any(), any());
-        Mockito.verify(nonceStateRepository).deleteById(NONCE);
-    }
 
-    @Test
-    public void testLTI3checkedDemoModeShowsTheRequestedLink() throws Exception {
-        givenValidCheckedRequest();
-        when(lti3Request.getLtiTargetLinkUrl()).thenReturn("https://tool.com/lti3?link=1234");
-        LtiLinkEntity link = Mockito.mock(LtiLinkEntity.class);
-        when(link.createHtmlFromLink()).thenReturn("<p>link content</p>");
-        when(ltiLinkRepository.findByLtiLinkIdAndToolLinkToolLinkIdAndContext("lti-link-1", "1234", ltiContextEntity)).thenReturn(List.of(link));
-
-        assertEquals("lti3Result", lti3Controller.lti3checked(req, model));
-
-        assertEquals("<p>link content</p>", model.getAttribute(TextConstants.HTML_CONTENT));
-    }
-
-    @Test
-    public void testLTI3checkedDemoModeWithAnUnknownLink() throws Exception {
-        givenValidCheckedRequest();
-        when(lti3Request.getLtiTargetLinkUrl()).thenReturn("https://tool.com/lti3?link=1234");
-        when(ltiLinkRepository.findByLtiLinkIdAndToolLinkToolLinkIdAndContext("lti-link-1", "1234", ltiContextEntity)).thenReturn(List.of());
-
-        assertEquals("lti3Result", lti3Controller.lti3checked(req, model));
-
-        assertEquals("<b> No element was found for that context and linkKey</b>", model.getAttribute(TextConstants.HTML_CONTENT));
-    }
-
-    @Test
-    public void testLTI3checkedDemoModeDeepLinking() throws Exception {
-        givenValidCheckedRequest();
-        when(lti3Request.getLtiMessageType()).thenReturn(LtiStrings.LTI_MESSAGE_TYPE_DEEP_LINKING);
-        List<DeepLinkDTO> deepLinks = List.of(new DeepLinkDTO());
-        when(deepLinkService.getDeepLinks()).thenReturn(deepLinks);
-
-        assertEquals("lti3DeepLink", lti3Controller.lti3checked(req, model));
-
-        assertEquals(deepLinks, model.getAttribute("deeplinks"));
-        assertEquals(HASH_STATE, model.getAttribute("state_hash"));
-        assertEquals(NONCE, model.getAttribute("nonce"));
-        assertEquals(TOKEN, model.getAttribute("token"));
-        assertEquals(ID_TOKEN, model.getAttribute("id_token"));
-        Mockito.verify(nonceStateRepository, Mockito.never()).deleteById(any());
-    }
 
     @Test
     public void testLTI3checkedWithAnInvalidStateSignature() throws Exception {
@@ -473,23 +321,7 @@ public class LTI3ControllerTest {
         assertEquals("bad state signature", model.getAttribute(TextConstants.ERROR));
     }
 
-    @Test
-    public void testLTI3checkedWhenTheTokenCannotBeSigned() throws Exception {
-        givenValidCheckedRequest();
-        when(apijwtService.buildJwt(false, lti3Request)).thenThrow(new GeneralSecurityException("no key"));
 
-        assertEquals(TextConstants.LTI3ERROR, lti3Controller.lti3checked(req, model));
-        assertEquals("no key", model.getAttribute(TextConstants.ERROR));
-    }
-
-    @Test
-    public void testLTI3checkedWhenTheTokenCannotBeWritten() throws Exception {
-        givenValidCheckedRequest();
-        when(apijwtService.buildJwt(false, lti3Request)).thenThrow(new IOException("io problem"));
-
-        assertEquals(TextConstants.LTI3ERROR, lti3Controller.lti3checked(req, model));
-        assertEquals("io problem", model.getAttribute(TextConstants.ERROR));
-    }
 
     @Test
     public void testLTI3WithUnknownState() throws Exception {
@@ -537,6 +369,106 @@ public class LTI3ControllerTest {
         assertEquals("_parent", model.getAttribute("ltiStorageTarget"));
         assertEquals("https://platform.com/authorize", model.getAttribute("oidc_authorization_uri"));
         Mockito.verify(platformDeploymentRepository, Mockito.never()).findByIssAndClientId(any(), any());
+    }
+
+    // a launch that gets through every check in lti3checked
+    private void stubValidLaunchEnding(Map<String, Object> launchClaims) throws Exception {
+        when(lti3Request.getAud()).thenReturn("client-id-1");
+        when(lti3Request.getLtiDeploymentId()).thenReturn("deployment-id-1");
+        when(lti3Request.getContext()).thenReturn(ltiContextEntity);
+        when(lti3Request.getLtiMessageType()).thenReturn(LtiStrings.LTI_MESSAGE_TYPE_RESOURCE_LINK);
+        when(lti3Request.getNonce()).thenReturn("launch-nonce");
+        Jws<Claims> launchJws = mock(Jws.class);
+        Claims launchPayload = Jwts.claims().add(launchClaims).build();
+        when(launchJws.getPayload()).thenReturn(launchPayload);
+        when(lti3Request.getJws()).thenReturn(launchJws);
+        String expectedHash = Hashing.sha256().hashString(ID_TOKEN + HASH_STATE + NONCE, StandardCharsets.UTF_8).toString();
+        when(claims.get("expected_hash")).thenReturn(expectedHash);
+        when(req.getParameter("token")).thenReturn(TOKEN);
+        when(ltijwtService.validateNonceState(any(String.class))).thenReturn(jwsClaims);
+        when(jwsClaims.getBody()).thenReturn(claims);
+        when(nonceStateRepository.findByStateHash(any(String.class))).thenReturn(new NonceState(NONCE, HASH_STATE, VALID_STATE, "_parent"));
+    }
+
+    @Test
+    public void testLTI3checkedHandsTheLaunchToTheApp() throws Exception {
+        stubValidLaunchEnding(Map.of("sub", "user-1", "iss", "https://canvas.instructure.com"));
+        when(lti3Request.getLtiTargetLinkUrl()).thenReturn("https://tool.com/lti3");
+        when(apijwtService.buildJwt(true, lti3Request)).thenReturn("one-time-token");
+
+        String response = lti3Controller.lti3checked(req, model);
+
+        assertEquals("redirect:/app/?token=one-time-token", response);
+        ArgumentCaptor<LaunchRecord> launch = ArgumentCaptor.forClass(LaunchRecord.class);
+        verify(launchStore).put(eq("launch-nonce"), launch.capture());
+        assertEquals(ID_TOKEN, launch.getValue().idToken());
+        assertEquals("client-id-1", launch.getValue().clientId());
+        assertEquals("user-1", launch.getValue().claims().get("sub"));
+        assertNull(launch.getValue().content());
+        assertNotNull(launch.getValue().launchedAt());
+        verify(nonceStateRepository).deleteById(NONCE);
+        verifyNoInteractions(ltiLinkRepository);
+    }
+
+    @Test
+    public void testLTI3checkedRecordsTheRequestedContent() throws Exception {
+        stubValidLaunchEnding(Map.of("sub", "user-1"));
+        when(lti3Request.getLtiTargetLinkUrl()).thenReturn("https://tool.com/lti3?link=1234");
+        when(lti3Request.getLtiLinkId()).thenReturn("resource-link-1");
+        LtiLinkEntity link = new LtiLinkEntity(ltiContextEntity, new ToolLink("1234", "Quiz", "A quiz", true, 10f));
+        when(ltiLinkRepository.findByLtiLinkIdAndToolLinkToolLinkIdAndContext("resource-link-1", "1234", ltiContextEntity)).thenReturn(List.of(link));
+        when(apijwtService.buildJwt(true, lti3Request)).thenReturn("one-time-token");
+
+        lti3Controller.lti3checked(req, model);
+
+        ArgumentCaptor<LaunchRecord> launch = ArgumentCaptor.forClass(LaunchRecord.class);
+        verify(launchStore).put(eq("launch-nonce"), launch.capture());
+        assertEquals(new LaunchRecord.Content("1234", "Quiz", "A quiz", true, 10f), launch.getValue().content());
+    }
+
+    @Test
+    public void testLTI3checkedRecordsNoContentForALinkTheCourseDoesntHave() throws Exception {
+        stubValidLaunchEnding(Map.of("sub", "user-1"));
+        when(lti3Request.getLtiTargetLinkUrl()).thenReturn("https://tool.com/lti3?link=missing");
+        when(ltiLinkRepository.findByLtiLinkIdAndToolLinkToolLinkIdAndContext(any(), eq("missing"), any())).thenReturn(List.of());
+        when(apijwtService.buildJwt(true, lti3Request)).thenReturn("one-time-token");
+
+        lti3Controller.lti3checked(req, model);
+
+        ArgumentCaptor<LaunchRecord> launch = ArgumentCaptor.forClass(LaunchRecord.class);
+        verify(launchStore).put(eq("launch-nonce"), launch.capture());
+        assertNull(launch.getValue().content());
+    }
+
+    @Test
+    public void testLTI3checkedEndsTheSameWayInDemoModeAndForDeepLinking() throws Exception {
+        stubValidLaunchEnding(Map.of("sub", "user-1"));
+        when(ltiDataService.getDemoMode()).thenReturn(true);
+        when(lti3Request.getLtiMessageType()).thenReturn(LtiStrings.LTI_MESSAGE_TYPE_DEEP_LINKING);
+        when(lti3Request.getLtiTargetLinkUrl()).thenReturn("https://tool.com/lti3");
+        when(apijwtService.buildJwt(true, lti3Request)).thenReturn("one-time-token");
+
+        assertEquals("redirect:/app/?token=one-time-token", lti3Controller.lti3checked(req, model));
+    }
+
+    @Test
+    public void testLTI3checkedWhenTheTokenCannotBeSigned() throws Exception {
+        stubValidLaunchEnding(Map.of("sub", "user-1"));
+        when(lti3Request.getLtiTargetLinkUrl()).thenReturn("https://tool.com/lti3");
+        when(apijwtService.buildJwt(true, lti3Request)).thenThrow(new GeneralSecurityException("bad key"));
+
+        assertEquals(TextConstants.LTI3ERROR, lti3Controller.lti3checked(req, model));
+        assertEquals("bad key", model.getAttribute(TextConstants.ERROR));
+    }
+
+    @Test
+    public void testLTI3checkedWhenTheTokenCannotBeWritten() throws Exception {
+        stubValidLaunchEnding(Map.of("sub", "user-1"));
+        when(lti3Request.getLtiTargetLinkUrl()).thenReturn("https://tool.com/lti3");
+        when(apijwtService.buildJwt(true, lti3Request)).thenThrow(new IOException("disk"));
+
+        assertEquals(TextConstants.LTI3ERROR, lti3Controller.lti3checked(req, model));
+        assertEquals("disk", model.getAttribute(TextConstants.ERROR));
     }
 
 }

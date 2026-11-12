@@ -15,7 +15,9 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.support.GenericApplicationContext;
+import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.config.ObjectPostProcessor;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -28,12 +30,15 @@ import org.springframework.security.web.servlet.util.matcher.PathPatternRequestM
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.DefaultSecurityFilterChain;
+import org.springframework.security.web.FilterChainProxy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.header.HeaderWriterFilter;
 import org.springframework.web.filter.CorsFilter;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -42,9 +47,11 @@ import java.util.stream.Collectors;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.security.config.Customizer.withDefaults;
 
 public class WebSecurityConfigTest {
 
@@ -145,6 +152,68 @@ public class WebSecurityConfigTest {
         assertTrue(types.contains(BasicAuthenticationFilter.class));
         assertFalse(types.contains(CsrfFilter.class));
         assertFalse(types.contains(HeaderWriterFilter.class));
+    }
+
+    // runs a request through the /config chain, with the defaults Spring's HttpSecurity bean applies
+    private MockHttpServletResponse callConfig(String authorization, boolean fromApp) throws Exception {
+        config.adminUser = "boss";
+        config.adminPassword = "s3cret";
+        HttpSecurity http = newHttpSecurity().exceptionHandling(withDefaults()).anonymous(withDefaults());
+        FilterChainProxy proxy = new FilterChainProxy(config.filterChain2(http));
+        MockHttpServletRequest request = requestTo("/config/");
+        if (authorization != null) {
+            request.addHeader("Authorization", authorization);
+        }
+        if (fromApp) {
+            request.addHeader("X-Requested-With", "XMLHttpRequest");
+        }
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        proxy.doFilter(request, response, new MockFilterChain());
+        return response;
+    }
+
+    private static String basic(String user, String password) {
+        return "Basic " + Base64.getEncoder().encodeToString((user + ":" + password).getBytes(StandardCharsets.UTF_8));
+    }
+
+    @Test
+    public void testConfigChainChallengesClientsWithoutCredentials() throws Exception {
+        MockHttpServletResponse response = callConfig(null, false);
+
+        assertEquals(401, response.getStatus());
+        assertTrue(response.getHeader("WWW-Authenticate").startsWith("Basic realm=\"Realm\""));
+    }
+
+    @Test
+    public void testConfigChainChallengesClientsWithWrongCredentials() throws Exception {
+        MockHttpServletResponse response = callConfig(basic("boss", "wrong"), false);
+
+        assertEquals(401, response.getStatus());
+        assertTrue(response.getHeader("WWW-Authenticate").startsWith("Basic realm=\"Realm\""));
+    }
+
+    @Test
+    public void testConfigChainDoesNotChallengeTheAppWithoutCredentials() throws Exception {
+        MockHttpServletResponse response = callConfig(null, true);
+
+        assertEquals(401, response.getStatus());
+        assertNull(response.getHeader("WWW-Authenticate"));
+    }
+
+    @Test
+    public void testConfigChainDoesNotChallengeTheAppWithWrongCredentials() throws Exception {
+        MockHttpServletResponse response = callConfig(basic("boss", "wrong"), true);
+
+        assertEquals(401, response.getStatus());
+        assertNull(response.getHeader("WWW-Authenticate"));
+    }
+
+    @Test
+    public void testConfigChainLetsTheAdminIn() throws Exception {
+        MockHttpServletResponse response = callConfig(basic("boss", "s3cret"), true);
+
+        assertEquals(200, response.getStatus());
+        assertNull(response.getHeader("WWW-Authenticate"));
     }
 
     @Test

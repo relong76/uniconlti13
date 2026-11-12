@@ -1,123 +1,63 @@
-<!--
-
-    Copyright 2021 Unicon (R)
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
-    http://www.apache.org/licenses/LICENSE-2.0
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
-
--->
 <!DOCTYPE html>
-<!--suppress CheckEmptyScriptTag -->
-<html xmlns:th="http://www.thymeleaf.org"
-      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.thymeleaf.org "
-      xml:lang="en">
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
 <head>
-    <title>LTI Starter Oicd Redirect</title>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
-    <link rel="stylesheet" type="text/css" th:href="@{/css/bootstrap.min.css}"/>
-    <link rel="stylesheet" type="text/css" th:href="@{/css/style.css}"/>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Register the tool</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/lti-pages.css}" />
 </head>
 <body>
+<header class="app-bar">Unicon LTI 1.3 Demo</header>
+<main class="page">
+    <div class="step"><span class="chip">Dynamic registration</span> Behind the scenes</div>
+    <h1>Register the tool with the LMS</h1>
+    <p class="lead">The LMS started dynamic registration. Check what it sent, then register the tool.</p>
 
-<h4>LTI Dynamic Registration Redirect</h4>
+    <section class="card" aria-labelledby="register-title">
+        <div class="card-title"><h2 id="register-title">Register</h2></div>
+        <div class="card-text">The tool sends its configuration to the LMS's registration endpoint.</div>
+        <div class="card-actions">
+            <form th:action="${own_redirect_post_endpoint}" method="post">
+                <button type="submit" class="btn">Register the tool</button>
+            </form>
+        </div>
+    </section>
 
-<h5>This is what we received from the platform</h5>
-<div>
-    <ul class="list-group">
-        <li class="list-group-item list-group-item-primary">
-            <label>openid_configuration:</label>
-            <span th:text="${openid_configuration}"/>
-        </li>
-        <li class="list-group-item list-group-item-primary">
-            <label>registration_token: </label>
-            <span th:text="${registration_token}"/>
-        </li>
-    </ul>
-</div>
+    <details class="card" open="open">
+        <summary>What the LMS sent</summary>
+        <div class="card-text">
+            <dl class="fields">
+                <div><dt>openid_configuration</dt><dd th:text="${openid_configuration}"></dd></div>
+                <div><dt>registration_token</dt><dd th:text="${registration_token}"></dd></div>
+            </dl>
+        </div>
+    </details>
 
-<h5>This is the platform configuration returned in the previous endpoint</h5>
-<div>
-    <ul class="list-group">
-        <li class="list-group-item list-group-item-primary">
-            <label>issuer:</label>
-            <span th:text="${platform_configuration.issuer}"/>
-        </li>
-        <li class="list-group-item list-group-item-primary">
-            <label>authorization_endpoint: </label>
-            <span th:text="${platform_configuration.authorization_endpoint}"/>
-        </li>
-        <li class="list-group-item list-group-item-primary">
-            <label>token_endpoint: </label>
-            <span th:text="${platform_configuration.token_endpoint}"/>
-        </li>
-        <li class="list-group-item list-group-item-primary">
-            <label>token_endpoint_auth_methods_supported: </label>
-            <span th:text="${platform_configuration.token_endpoint_auth_methods_supported}"/>
-        </li>
-        <li class="list-group-item list-group-item-primary">
-            <label>jwks_uri: </label>
-            <span th:text="${platform_configuration.jwks_uri}"/>
-        </li>
-        <li class="list-group-item list-group-item-primary">
-            <label>registration_endpoint: </label>
-            <span th:text="${platform_configuration.registration_endpoint}"/>
-        </li>
-        <li class="list-group-item list-group-item-primary">
-            <label>scopes_supported: </label>
-            <span th:text="${platform_configuration.scopes_supported}"/>
-        </li>
-        <li class="list-group-item list-group-item-primary">
-            <label>response_types_supported: </label>
-            <span th:text="${platform_configuration.response_types_supported}"/>
-        </li>
-        <li class="list-group-item list-group-item-primary">
-            <label>subject_types_supported: </label>
-            <span th:text="${platform_configuration.subject_types_supported}"/>
-        </li>
-        <li class="list-group-item list-group-item-primary">
-            <label>id_token_signing_alg_values_supported: </label>
-            <span th:text="${platform_configuration.id_token_signing_alg_values_supported}"/>
-        </li>
-        <li class="list-group-item list-group-item-primary">
-            <label>claims_supported: </label>
-            <span th:text="${platform_configuration.claims_supported}"/>
-        </li>
-        <li class="list-group-item list-group-item-primary">
-            <label>authorization_server: </label>
-            <span th:text="${platform_configuration.authorization_server}"/>
-        </li>
-        <li class="list-group-item list-group-item-primary">
-            <label>https://purl.imsglobal.org/spec/lti-platform-configuration: </label>
-            <span th:text="${platform_configuration.platformConfiguration}"/>
-        </li>
-    </ul>
-</div>
+    <details class="card">
+        <summary>The LMS's configuration</summary>
+        <div class="card-text">
+            <dl class="fields">
+                <div><dt>issuer</dt><dd th:text="${platform_configuration.issuer}"></dd></div>
+                <div><dt>authorization_endpoint</dt><dd th:text="${platform_configuration.authorization_endpoint}"></dd></div>
+                <div><dt>token_endpoint</dt><dd th:text="${platform_configuration.token_endpoint}"></dd></div>
+                <div><dt>token_endpoint_auth_methods_supported</dt><dd th:text="${platform_configuration.token_endpoint_auth_methods_supported}"></dd></div>
+                <div><dt>jwks_uri</dt><dd th:text="${platform_configuration.jwks_uri}"></dd></div>
+                <div><dt>registration_endpoint</dt><dd th:text="${platform_configuration.registration_endpoint}"></dd></div>
+                <div><dt>scopes_supported</dt><dd th:text="${platform_configuration.scopes_supported}"></dd></div>
+                <div><dt>response_types_supported</dt><dd th:text="${platform_configuration.response_types_supported}"></dd></div>
+                <div><dt>subject_types_supported</dt><dd th:text="${platform_configuration.subject_types_supported}"></dd></div>
+                <div><dt>id_token_signing_alg_values_supported</dt><dd th:text="${platform_configuration.id_token_signing_alg_values_supported}"></dd></div>
+                <div><dt>claims_supported</dt><dd th:text="${platform_configuration.claims_supported}"></dd></div>
+                <div><dt>authorization_server</dt><dd th:text="${platform_configuration.authorization_server}"></dd></div>
+                <div><dt>https://purl.imsglobal.org/spec/lti-platform-configuration</dt><dd th:text="${platform_configuration.platformConfiguration}"></dd></div>
+            </dl>
+        </div>
+    </details>
 
-
-<p>&nbsp;</p>
-<h5>This is what we are going to send to the Registration Endpoint</h5>
-
-<div>
-    <ul class="list-group">
-        <li class="list-group-item list-group-item-primary">
-            <label>tool configuration:</label>
-            <span th:text="${tool_configuration}"/>
-        </li>
-    </ul>
-</div>
-
-
-<form th:action="${own_redirect_post_endpoint}" method="post">
-
-    <input type="submit" value="Submit" class="btn btn-primary">
-</form>
-
-<p>&nbsp;</p>
+    <details class="card">
+        <summary>The configuration the tool will send</summary>
+        <div class="card-text"><code th:text="${tool_configuration}"></code></div>
+    </details>
+</main>
 </body>
 </html>

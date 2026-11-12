@@ -8,6 +8,8 @@ public class DeepLinkDTO {
     private String toolLinkId;
     private String title;
     private String description;
+    private Boolean assignment;
+    private Float maxGrade;
 
 
     public DeepLinkDTO() {//Empty on purpose
@@ -17,6 +19,12 @@ public class DeepLinkDTO {
         this.toolLinkId = toolLinkId;
         this.title = title;
         this.description = description;
+    }
+
+    public DeepLinkDTO(String toolLinkId, String title, String description, Boolean assignment, Float maxGrade) {
+        this(toolLinkId, title, description);
+        this.assignment = assignment;
+        this.maxGrade = maxGrade;
     }
 
     public DeepLinkDTO(HttpServletRequest req) {
@@ -47,5 +55,21 @@ public class DeepLinkDTO {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public Boolean getAssignment() {
+        return assignment;
+    }
+
+    public void setAssignment(Boolean assignment) {
+        this.assignment = assignment;
+    }
+
+    public Float getMaxGrade() {
+        return maxGrade;
+    }
+
+    public void setMaxGrade(Float maxGrade) {
+        this.maxGrade = maxGrade;
     }
 }

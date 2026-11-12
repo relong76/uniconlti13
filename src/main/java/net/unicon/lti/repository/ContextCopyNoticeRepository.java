@@ -9,4 +9,6 @@ public interface ContextCopyNoticeRepository extends JpaRepository<ContextCopyNo
 
     boolean existsByNoticeId(String noticeId);
 
+    long countByKeyId(long keyId);
+
 }
