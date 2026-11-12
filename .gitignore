@@ -1,5 +1,4 @@
 /target/
-!.mvn/wrapper/maven-wrapper.jar
 
 ### STS ###
 .apt_generated
@@ -25,6 +24,7 @@
 /.nb-gradle/
 
 /.scannerwork/
+/.sonar/
 /sonar-project.properties
 
 application-local*.properties
