@@ -31,6 +31,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -97,9 +98,13 @@ public class DeepLinkServiceImplTest {
         assertEquals("1", result.get(0).getToolLinkId());
         assertEquals("Title 1", result.get(0).getTitle());
         assertEquals("Desc 1", result.get(0).getDescription());
+        assertEquals(Boolean.TRUE, result.get(0).getAssignment());
+        assertEquals(10f, result.get(0).getMaxGrade());
         assertEquals("2", result.get(1).getToolLinkId());
         assertEquals("Title 2", result.get(1).getTitle());
         assertEquals("Desc 2", result.get(1).getDescription());
+        assertEquals(Boolean.FALSE, result.get(1).getAssignment());
+        assertNull(result.get(1).getMaxGrade());
     }
 
     @Test

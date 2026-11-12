@@ -53,7 +53,7 @@ public class DeepLinkServiceImpl implements DeepLinkService {
        List<ToolLink> toolLinkList = toolLinks.findAll();
        List<DeepLinkDTO> deepLinkDTOS = new ArrayList<DeepLinkDTO>();
        for (ToolLink toolLink:toolLinkList){
-           DeepLinkDTO deepLinkDTO = new DeepLinkDTO(toolLink.getToolLinkId(),toolLink.getTitle(), toolLink.getDescription());
+           DeepLinkDTO deepLinkDTO = new DeepLinkDTO(toolLink.getToolLinkId(), toolLink.getTitle(), toolLink.getDescription(), toolLink.getIsAssignment(), toolLink.getMaxGrade());
            deepLinkDTOS.add(deepLinkDTO);
        }
        return deepLinkDTOS;

@@ -1,5 +1,10 @@
 package net.unicon.lti.controller.lti;
 
+import java.util.LinkedHashMap;
+import java.time.Instant;
+import net.unicon.lti.service.app.LaunchStore;
+import net.unicon.lti.model.ToolLink;
+import net.unicon.lti.model.LaunchRecord;
 import net.unicon.lti.utils.lti.LtiLinkUtils;
 import lombok.RequiredArgsConstructor;
 import java.util.Map;
@@ -13,18 +18,15 @@ import net.unicon.lti.exceptions.ConnectionException;
 import net.unicon.lti.exceptions.DataServiceException;
 import net.unicon.lti.model.LtiLinkEntity;
 import net.unicon.lti.model.PlatformDeployment;
-import net.unicon.lti.model.lti.dto.DeepLinkDTO;
 import net.unicon.lti.model.lti.dto.NonceState;
 import net.unicon.lti.repository.LtiContextRepository;
 import net.unicon.lti.repository.LtiLinkRepository;
 import net.unicon.lti.service.app.APIJWTService;
-import net.unicon.lti.service.lti.DeepLinkService;
 import net.unicon.lti.service.lti.LTIDataService;
 import net.unicon.lti.service.lti.LTIJWTService;
 import net.unicon.lti.utils.LtiStrings;
 import net.unicon.lti.utils.TextConstants;
 import net.unicon.lti.utils.lti.LTI3Request;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
@@ -56,11 +58,11 @@ public class LTI3Controller {
 
     private final LTIDataService ltiDataService;
 
-    private final DeepLinkService deepLinkService;
-
     private final LtiContextRepository ltiContextRepository;
 
     private final NoticeService noticeService;
+
+    private final LaunchStore launchStore;
 
     @RequestMapping(value = {"", "/"}, method = {RequestMethod.GET, RequestMethod.POST})
     public String lti3(HttpServletRequest req, Model model) throws DataServiceException, ConnectionException {
@@ -185,45 +187,19 @@ public class LTI3Controller {
                 return TextConstants.LTI3ERROR;
             }
             registerNoticeHandlers(lti3Request);
-            //We add the request to the model so it can be displayed. But, in a real application, we would start
-            // processing it here to generate the right answer.
-            if (ltiDataService.getDemoMode()) {
-                model.addAttribute("lti3Request", lti3Request);
-                String link = LtiLinkUtils.linkParameter(lti3Request.getLtiTargetLinkUrl());
-                if (StringUtils.isNotBlank(link)) {
-                    List<LtiLinkEntity> linkEntity = ltiLinkRepository.findByLtiLinkIdAndToolLinkToolLinkIdAndContext(lti3Request.getLtiLinkId(), link, lti3Request.getContext());
-                    log.debug("Searching for link " + link + " in the context Key " + lti3Request.getContext().getContextKey() + " And id " + lti3Request.getContext().getContextId());
-                    if (linkEntity.size() > 0) {
-                        model.addAttribute(TextConstants.HTML_CONTENT, linkEntity.get(0).createHtmlFromLink());
-                    } else {
-                        model.addAttribute(TextConstants.HTML_CONTENT, "<b> No element was found for that context and linkKey</b>");
-                    }
-                } else {
-                    model.addAttribute(TextConstants.HTML_CONTENT, "<b> No element was requested or it doesn't exists </b>");
-                }
-                String advantageToken = apiJWTService.buildJwt(
-                        false,
-                        lti3Request);
-                model.addAttribute(TextConstants.ADVANTAGE_TOKEN, advantageToken);
-                if (lti3Request.getLtiMessageType().equals(LtiStrings.LTI_MESSAGE_TYPE_DEEP_LINKING)) {
+            // hand the launch to the app: it trades this one-time token for an API token, and reads
+            // the launch back with it (see LaunchApiController)
+            launchStore.put(lti3Request.getNonce(), new LaunchRecord(
+                id_token,
+                lti3Request.getAud(),
+                new LinkedHashMap<>(lti3Request.getJws().getPayload()),
+                requestedContent(lti3Request),
+                Instant.now()
+            ));
+            ltiDataService.getRepos().nonceStateRepository.deleteById(expected_nonce);
+            String oneTimeToken = apiJWTService.buildJwt(true, lti3Request);
 
-                    //Let's get the list of links available
-                    List<DeepLinkDTO> deepLinkDTOS = deepLinkService.getDeepLinks();
-                    model.addAttribute("deeplinks", deepLinkDTOS);
-                    model.addAttribute("state_hash", expected_state);
-                    model.addAttribute("nonce", expected_nonce);
-                    model.addAttribute("token", token);
-                    model.addAttribute("id_token", id_token);
-                    return "lti3DeepLink";
-                }
-                ltiDataService.getRepos().nonceStateRepository.deleteById(expected_nonce);
-                return "lti3Result";
-            } else {
-                String oneTimeToken = apiJWTService.buildJwt(
-                        true,
-                        lti3Request);
-                return "redirect:/app/app.html?token=" + oneTimeToken;
-            }
+            return "redirect:/app/?token=" + oneTimeToken;
         } catch (SignatureException ex) {
             model.addAttribute(TextConstants.ERROR, ex.getMessage());
             return TextConstants.LTI3ERROR;
@@ -236,6 +212,25 @@ public class LTI3Controller {
         }
     }
 
+
+    // the demo content the launch named with ?link=, if it's in this course
+    LaunchRecord.Content requestedContent(LTI3Request lti3Request) {
+        String link = LtiLinkUtils.linkParameter(lti3Request.getLtiTargetLinkUrl());
+
+        if (link == null) {
+            return null;
+        }
+
+        List<LtiLinkEntity> links = ltiLinkRepository.findByLtiLinkIdAndToolLinkToolLinkIdAndContext(lti3Request.getLtiLinkId(), link, lti3Request.getContext());
+
+        if (links.isEmpty()) {
+            return null;
+        }
+
+        ToolLink toolLink = links.get(0).getToolLink();
+
+        return new LaunchRecord.Content(toolLink.getToolLinkId(), toolLink.getTitle(), toolLink.getDescription(), toolLink.getIsAssignment(), toolLink.getMaxGrade());
+    }
 
     // if the platform offers course copy notices on this launch, register this tool's handler
     // for them (in the background, and only once per deployment); never fails the launch

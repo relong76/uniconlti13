@@ -52,6 +52,17 @@ public class DeepLinkDtoTest {
         assertEquals("a", empty.getToolLinkId());
         assertEquals("b", empty.getTitle());
         assertEquals("c", empty.getDescription());
+        assertNull(empty.getAssignment());
+        assertNull(empty.getMaxGrade());
+        empty.setAssignment(true);
+        empty.setMaxGrade(5f);
+        assertEquals(Boolean.TRUE, empty.getAssignment());
+        assertEquals(5f, empty.getMaxGrade());
+
+        DeepLinkDTO assignment = new DeepLinkDTO("tl", "Quiz", "A quiz", true, 10f);
+        assertEquals("Quiz", assignment.getTitle());
+        assertEquals(Boolean.TRUE, assignment.getAssignment());
+        assertEquals(10f, assignment.getMaxGrade());
     }
 
     @Test

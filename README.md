@@ -39,6 +39,36 @@ You can run the app in place to try it out without having to install and deploy 
 NOTE: To run it and connect it to real LMSs it is recommended to run it in an accessible server 
 with a valid certificate.
 
+The user interface
+------------------
+The LTI protocol steps (OIDC login, the state and nonce check, dynamic registration) are server-rendered Thymeleaf
+pages. Once a launch is validated, the tool hands it to a Vue 3 and Vuetify 4 app served at `/app/`: the launch ends
+with a redirect to `/app/?token={one-time token}`, the app trades that token for an API token at `/api/oauth/trade`,
+and reads the launch, grades, roster and deep linking content from the JSON endpoints under `/api`. The admin screens
+(`/app/#/admin`) sign in with the `lti13.admin.user` and `lti13.admin.password` credentials and use the
+`/config` endpoints.
+
+The app's source is in `src/main/javascript`. Every Maven build installs Node into `target` and builds the app into
+`src/main/resources/static/app` (git ignored), so `mvn spring-boot:run` and the jar serve it. To skip that while working
+on the Java code only:
+
+    mvn test -Dskip.npm -Dskip.installnodenpm
+
+When running from an IDE such as VS Code, build the app once first (`npm run build` in `src/main/javascript`, or any Maven
+build), since the IDE compiles only the Java code.
+
+To work on the app with hot reload, run the tool, then the Vite dev server, which sends `/api` and `/config` calls to the
+tool on https://localhost:9090:
+
+    cd src/main/javascript
+    npm install
+    npm run dev
+
+Its tests run with Vitest and require 95% coverage of lines, branches, functions and statements:
+
+    npm test                      # in src/main/javascript
+    mvn test -Pfrontend-tests     # the Java tests and the app's tests together
+
 
 Instructions to Start from Scratch
 ----------------------------------
@@ -151,7 +181,7 @@ Registering a Platform Deployment
 Each LMS deployment the tool accepts launches from needs a platform deployment record (issuer, client id, deployment id
 and the platform's OIDC, JWKS and token endpoints). You can seed them from JSON files in
 `src/main/resources/data/platform_deployment/` or create them at runtime with the admin credentials
-(`terracotta.admin.user` / `terracotta.admin.password`):
+(`lti13.admin.user` / `lti13.admin.password`; the older `terracotta.admin.*` names still work):
 
     curl -u admin:PASSWORD -X POST https://localhost:9090/config/ -H "Content-Type: application/json" -d '{
       "iss": "https://canvas.instructure.com",

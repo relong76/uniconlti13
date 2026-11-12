@@ -11,4 +11,6 @@ public interface NoticeSubscriptionRepository extends JpaRepository<NoticeSubscr
 
     Optional<NoticeSubscription> findByKeyIdAndNoticeType(long keyId, String noticeType);
 
+    long countByKeyId(long keyId);
+
 }

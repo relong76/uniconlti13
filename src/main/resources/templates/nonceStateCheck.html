@@ -1,108 +1,65 @@
-<!--
-
-    Copyright 2021 Unicon (R)
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
-    http://www.apache.org/licenses/LICENSE-2.0
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
-
--->
 <!DOCTYPE html>
-<!--suppress CheckEmptyScriptTag -->
-<html xmlns:th="http://www.thymeleaf.org" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://www.thymeleaf.org " xml:lang="en">
-
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
 <head>
-    <title>LTI Core Standard Launch OIDC Redirect (Behind the Scenes - Step 1)</title>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-    <link rel="stylesheet" type="text/css" th:href="@{/css/bootstrap.min.css}" />
-    <link rel="stylesheet" type="text/css" th:href="@{/css/style.css}" />
-
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Check the launch: step 2 of 2</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/lti-pages.css}" />
 </head>
-
 <body>
 <script type="text/javascript" th:src="@{/js/ltiPostMessage.js}"></script>
-<script type="text/javascript" th:src="@{/js/utils.js}"></script>
-<script src="https://cdn.jsdelivr.net/npm/uuid@8.3.2/dist/umd/uuidv4.min.js"
-        integrity="sha256-S7uAbnQ+Ibyfl7YvwFZOCIm38x7p1Iw/K4XU4A/mKcw="
-        crossorigin="anonymous"></script>
+<script type="text/javascript" th:src="@{/js/uuidv4.js}"></script>
+<header class="app-bar">Unicon LTI 1.3 Demo</header>
+<main class="page">
+    <div class="step"><span class="chip">Step 2 of 2</span> Behind the scenes</div>
+    <h1>Check the launch</h1>
 
-</script>
-
-
-
-
-    <div th:if="${ltiStorageTarget}">
-        <h4>LTI Checking the nonce and state for the cookieless solution (Behind the Scenes)</h4>
-        <h5 class="alert alert-warning">In a real tool that is not for demonstration purposes, this step will be handled
-            without any user interaction, so the user will never see this page/information except maybe for some
-            milliseconds or in case of error.</h5>
-
-        <form id="endpoint-form" action="/lti3/stateNonceChecked" method="POST">
-            <table>
-                <tr>
-                    <td>State retrieved</td><td><input id="pmState" name="state" type="text" value="" /></td>
-                </tr>
-                <tr>
-                    <td>Nonce retrieved</td><td><input id="pmNonce" name="nonce" type="text" value="" /></td>
-                </tr>
-                <tr>
-                    <td>Expected_state</td><td><input id="pmExpected_state" name="expected_state" type="text" value="" /></td>
-                </tr>
-                <tr>
-                    <td>Expected_nonce</td><td><input id="pmExpected_nonce" name="expected_nonce" type="text" value="" /></td>
-                </tr>
-                <tr>
-                    <td>Id_token</td><td><input id="pmId_token" name="id_token" type="text" value="" /></td>
-                </tr>
-                <tr>
-                    <td>Security Token</td><td><input id="pmToken" name="token" type="text" value="" /></td>
-                </tr>
-            </table>
-            <input id="cookies" name="cookies" type="hidden" value="false" />
-            <input type="submit" id="post_button" value="Submit POST" class="btn btn-primary" disabled="disabled">
-        </form>
-
-        <div></br></br></div>
-
-        <div class="alert alert-info">
-            <p>
-                The LTI tool is retrieving the <code>nonce</code> and <code>state</code> from the <code>target</code> frame storage.
-                We have these values:
-            </p>
-
-            <ul>
-                <li><code>token</code>: <code th:text="${token}"></code></li>
-                <li><code>id_token</code>: <code th:text="${id_token}"></code></li>
-                <li><code>ltiStorageTarget</code>: <code th:text="${ltiStorageTarget}"></code></li>
-                <li><code>expected_state</code>: <code th:text="${expected_state}"></code></li>
-                <li><code>expected_nonce</code>: <code th:text="${expected_nonce}"></code></li>
-                <li><code>oidc_authorization_uri</code>: <code th:text="${oidc_authorization_uri}"></code></li>
-            </ul>
-
+    <th:block th:if="${ltiStorageTarget}">
+        <p class="lead">The LMS signed the user in and sent the id_token. The tool now reads the state and nonce it
+            saved in the LMS frame's storage (the launch flow that works without cookies) and checks they match.</p>
+        <div class="alert info">
+            <p>A real tool does this without showing a page, except perhaps for a moment or when something is wrong.</p>
         </div>
-    </div>
-    <div th:if="${ltiStorageTarget == null}">
-        <p>We are using cookies because the ltiStorageTarget has not been provided, so this step does not need to perform any action. Press the continue button to allow the process to finish.</p>
+    </th:block>
+    <p th:unless="${ltiStorageTarget}" class="lead">The LMS signed the user in and sent the id_token.</p>
 
-        <form id="endpoint-form" action="/lti3/stateNonceChecked" method="POST">
-            <input id="pmState" name="state" type="hidden" value="" />
-            <input id="pmNonce" name="nonce" type="hidden" value="" />
-            <input id="pmExpected_state" name="expected_state" type="hidden" value="" />
-            <input id="pmExpected_nonce" name="expected_nonce" type="hidden" value="" />
-            <input id="pmId_token" name="id_token" type="hidden" value="" />
-            <input id="pmToken" name="token" type="hidden" value="" />
-            <input id="cookies" name="cookies" type="hidden" value="true" />
-            <input type="submit" id="post_button" value="Continue" class="btn btn-primary" disabled="disabled">
-        </form>
+    <!-- one form for both flows, so its ids are unique; in the cookie flow its fields stay hidden -->
+    <section class="card" aria-labelledby="check-title">
+        <div class="card-title">
+            <h2 id="check-title" th:text="${ltiStorageTarget} ? 'Values to check' : 'Nothing to check here'">Values to check</h2>
+        </div>
+        <div class="card-text">
+            <p th:unless="${ltiStorageTarget}">The LMS didn't offer frame storage for this launch, so the tool checks the
+                state and nonce with its cookies instead. Continue to finish the launch.</p>
+            <form id="endpoint-form" action="/lti3/stateNonceChecked" method="POST">
+                <div class="form-field" th:hidden="${ltiStorageTarget == null}"><label for="pmState">state (from storage)</label><input id="pmState" name="state" type="text" value="" /></div>
+                <div class="form-field" th:hidden="${ltiStorageTarget == null}"><label for="pmNonce">nonce (from storage)</label><input id="pmNonce" name="nonce" type="text" value="" /></div>
+                <div class="form-field" th:hidden="${ltiStorageTarget == null}"><label for="pmExpected_state">expected_state</label><input id="pmExpected_state" name="expected_state" type="text" value="" /></div>
+                <div class="form-field" th:hidden="${ltiStorageTarget == null}"><label for="pmExpected_nonce">expected_nonce</label><input id="pmExpected_nonce" name="expected_nonce" type="text" value="" /></div>
+                <div class="form-field" th:hidden="${ltiStorageTarget == null}"><label for="pmId_token">id_token</label><input id="pmId_token" name="id_token" type="text" value="" /></div>
+                <div class="form-field" th:hidden="${ltiStorageTarget == null}"><label for="pmToken">security token</label><input id="pmToken" name="token" type="text" value="" /></div>
+                <input id="cookies" name="cookies" type="hidden" value="false" th:value="${ltiStorageTarget == null}" />
+            </form>
+        </div>
+        <div class="card-actions">
+            <button type="submit" form="endpoint-form" id="post_button" class="btn" disabled="disabled">Continue</button>
+        </div>
+    </section>
 
-    </div>
-
+    <details class="card" th:if="${ltiStorageTarget}">
+        <summary>What the tool received</summary>
+        <div class="card-text">
+            <dl class="fields">
+                <div><dt>token</dt><dd><code th:text="${token}"></code></dd></div>
+                <div><dt>id_token</dt><dd><code th:text="${id_token}"></code></dd></div>
+                <div><dt>ltiStorageTarget</dt><dd><code th:text="${ltiStorageTarget}"></code></dd></div>
+                <div><dt>expected_state</dt><dd><code th:text="${expected_state}"></code></dd></div>
+                <div><dt>expected_nonce</dt><dd><code th:text="${expected_nonce}"></code></dd></div>
+                <div><dt>oidc_authorization_uri</dt><dd><code th:text="${oidc_authorization_uri}"></code></dd></div>
+            </dl>
+        </div>
+    </details>
+</main>
 <script th:inline="javascript">
     const nonceStateCheck = async () => {
 

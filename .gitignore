@@ -40,3 +40,5 @@ application-local*.properties
 /application.yml
 # editor settings
 /.vscode/
+# the Vue app's build output (src/main/javascript)
+/src/main/resources/static/app/
