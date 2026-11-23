@@ -24,7 +24,7 @@
         <json.version>20260814</json.version>
         <!-- the Vue app in src/main/javascript, built into static/app -->
         <frontend-maven-plugin.version>2.0.2</frontend-maven-plugin.version>
-        <node.version>v26.13.0</node.version>
+        <node.version>v26.13.1</node.version>
         <npm.version>11.20.0</npm.version>
         <nimbus-jose-jwt.version>10.10</nimbus-jose-jwt.version>
     </properties>
