@@ -83,6 +83,12 @@ public class OIDCController {
         // We will try all the options here (from more detailed to less), and we will deal with the error if there are more than one result.
         if (clientIdValue != null && deploymentIdValue != null) {
             platformDeploymentList = platformDeploymentRepository.findByIssAndClientIdAndDeploymentId(loginInitiationDTO.getIss(), clientIdValue, deploymentIdValue);
+            if (platformDeploymentList.isEmpty()) {
+                // a deployment this tool hasn't seen, such as the installation a course copy creates:
+                // log in with the platform's settings. The deployment is only registered later, once
+                // the signed id_token confirms it (see LTI3Request).
+                platformDeploymentList = platformDeploymentRepository.findByIssAndClientId(loginInitiationDTO.getIss(), clientIdValue);
+            }
         } else if (clientIdValue != null) {
             platformDeploymentList = platformDeploymentRepository.findByIssAndClientId(loginInitiationDTO.getIss(), clientIdValue);
         } else if (deploymentIdValue != null) {

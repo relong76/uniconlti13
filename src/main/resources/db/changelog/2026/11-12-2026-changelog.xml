@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd"
+        objectQuotingStrategy="QUOTE_ONLY_RESERVED_WORDS">
+
+    <!-- notice handlers registered with a platform's Platform Notification Service -->
+    <changeSet id="20261112-01" author="rlong">
+        <createTable tableName="lti_notice_subscription">
+            <column name="subscription_id" type="BIGINT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="PK_LTI_NOTICE_SUBSCRIPTION"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP"/>
+            <column name="updated_at" type="DATETIME"/>
+            <column name="entity_version" type="INT"/>
+            <column name="key_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="notice_type" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="pns_url" type="VARCHAR(4096)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="handler_url" type="VARCHAR(4096)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="lti_notice_subscription" columnNames="key_id, notice_type"
+                             constraintName="UQ_LTI_NOTICE_SUBSCRIPTION_KEY_TYPE"/>
+    </changeSet>
+
+    <!-- course copy notices received from platforms -->
+    <changeSet id="20261112-02" author="rlong">
+        <createTable tableName="lti_context_copy_notice">
+            <column name="context_copy_notice_id" type="BIGINT" autoIncrement="true">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="PK_LTI_CONTEXT_COPY_NOTICE"/>
+            </column>
+            <column name="created_at" type="TIMESTAMP DEFAULT CURRENT_TIMESTAMP"/>
+            <column name="updated_at" type="DATETIME"/>
+            <column name="entity_version" type="INT"/>
+            <column name="notice_id" type="VARCHAR(255)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="UQ_LTI_CONTEXT_COPY_NOTICE_ID"/>
+            </column>
+            <column name="key_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="notice_timestamp" type="VARCHAR(255)"/>
+            <column name="context_key" type="VARCHAR(4096)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="context_title" type="VARCHAR(4096)"/>
+            <column name="origin_context_keys" type="VARCHAR(4096)"/>
+        </createTable>
+    </changeSet>
+
+    <!-- the deployment a course copy notice came from, which can be one the tool hasn't registered -->
+    <changeSet id="20261112-03" author="rlong">
+        <addColumn tableName="lti_context_copy_notice">
+            <column name="deployment_id" type="VARCHAR(255)"/>
+        </addColumn>
+    </changeSet>
+
+</databaseChangeLog>

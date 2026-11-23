@@ -1,5 +1,6 @@
 package net.unicon.lti.utils.lti;
 
+import net.unicon.lti.repository.PlatformDeploymentRepository;
 import com.google.common.collect.Iterables;
 import com.nimbusds.jose.JOSEException;
 import io.jsonwebtoken.Claims;
@@ -282,6 +283,9 @@ public class LTI3Request {
 
         String deploymentId = String.valueOf(jws.getBody().get(LtiStrings.LTI_DEPLOYMENT_ID));
         List<PlatformDeployment> platformDeploymentList = ltiDataService.getRepos().platformDeploymentRepository.findByIssAndClientIdAndDeploymentId(iss, clientId, deploymentId);
+        if (platformDeploymentList.isEmpty()) {
+            platformDeploymentList = registerDeployment(ltiDataService.getRepos().platformDeploymentRepository, iss, clientId, deploymentId);
+        }
         if (platformDeploymentList.size() != 1) {
             throw new IllegalStateException("PlatformDeployment does not exist or is duplicated for issuer: " + iss + ", clientId: " + clientId + ", and deploymentId: " + deploymentId);
         }
@@ -770,4 +774,47 @@ public class LTI3Request {
         }
         return roleNum;
     }
+
+    private static final Object DEPLOYMENT_REGISTRATION_LOCK = new Object();
+
+    /**
+     * Registers a deployment this tool hasn't seen, for a platform (issuer and client ID) it has.
+     * Copying a course that has the tool installed in it gives the new course its own installation,
+     * with a new deployment ID, and its first launch arrives here. Only called once the id_token's
+     * signature has been checked against the platform's keys, so the deployment ID can be trusted.
+     * The new registration copies the platform's endpoints from an existing one.
+     *
+     * @return the new registration, or an empty list if the platform isn't registered at all
+     */
+    static List<PlatformDeployment> registerDeployment(PlatformDeploymentRepository repository, String iss, String clientId, String deploymentId) {
+        synchronized (DEPLOYMENT_REGISTRATION_LOCK) {
+            // another launch may have registered it while this one waited
+            List<PlatformDeployment> existing = repository.findByIssAndClientIdAndDeploymentId(iss, clientId, deploymentId);
+
+            if (!existing.isEmpty()) {
+                return existing;
+            }
+
+            List<PlatformDeployment> platform = repository.findByIssAndClientId(iss, clientId);
+
+            if (platform.isEmpty()) {
+                return platform;
+            }
+
+            PlatformDeployment template = platform.get(0);
+            PlatformDeployment platformDeployment = new PlatformDeployment();
+            platformDeployment.setIss(template.getIss());
+            platformDeployment.setClientId(template.getClientId());
+            platformDeployment.setOidcEndpoint(template.getOidcEndpoint());
+            platformDeployment.setJwksEndpoint(template.getJwksEndpoint());
+            platformDeployment.setoAuth2TokenUrl(template.getoAuth2TokenUrl());
+            platformDeployment.setoAuth2TokenAud(template.getoAuth2TokenAud());
+            platformDeployment.setDeploymentId(deploymentId);
+            PlatformDeployment saved = repository.save(platformDeployment);
+            log.info("Registered new deployment ID: [{}] for issuer: [{}] and client ID: [{}], copying the platform settings from platform deployment ID: [{}]", deploymentId, iss, clientId, template.getKeyId());
+
+            return List.of(saved);
+        }
+    }
+
 }

@@ -333,7 +333,36 @@ public class LTI3ControllerTest {
         }
     }
 
+    @Test
+    public void testLTI3WithUnregisteredDeploymentUsesThePlatformOidcEndpoint() throws DataServiceException, ConnectionException {
+        NonceState nonceState = new NonceState(NONCE, HASH_STATE, VALID_STATE, "_parent");
+        when(nonceStateRepository.findByStateHash(any(String.class))).thenReturn(nonceState);
+        when(jwsClaims.getBody().get(eq("original_iss"), any())).thenReturn("iss-1");
+        when(jwsClaims.getBody().get(eq("clientId"), any())).thenReturn("client-id-1");
+        when(jwsClaims.getBody().get(eq("ltiDeploymentId"), any())).thenReturn("copied-course-deployment");
+        PlatformDeployment platform = new PlatformDeployment();
+        platform.setOidcEndpoint("https://sso.example.com/api/lti/authorize_redirect");
+        when(allRepositories.platformDeploymentRepository.findByIssAndClientIdAndDeploymentId("iss-1", "client-id-1", "copied-course-deployment")).thenReturn(new ArrayList<>());
+        when(allRepositories.platformDeploymentRepository.findByIssAndClientId("iss-1", "client-id-1")).thenReturn(List.of(platform));
 
+        String response = lti3Controller.lti3(req, model);
+
+        assertEquals("nonceStateCheck", response);
+        assertEquals("https://sso.example.com/api/lti/authorize_redirect", model.getAttribute("oidc_authorization_uri"));
+    }
+
+    @Test
+    public void testLTI3WithUnknownPlatformIsAnError() throws DataServiceException, ConnectionException {
+        NonceState nonceState = new NonceState(NONCE, HASH_STATE, VALID_STATE, "_parent");
+        when(nonceStateRepository.findByStateHash(any(String.class))).thenReturn(nonceState);
+        when(jwsClaims.getBody().get(eq("original_iss"), any())).thenReturn("iss-1");
+        when(jwsClaims.getBody().get(eq("clientId"), any())).thenReturn("client-id-1");
+        when(jwsClaims.getBody().get(eq("ltiDeploymentId"), any())).thenReturn("copied-course-deployment");
+        when(allRepositories.platformDeploymentRepository.findByIssAndClientIdAndDeploymentId("iss-1", "client-id-1", "copied-course-deployment")).thenReturn(new ArrayList<>());
+        when(allRepositories.platformDeploymentRepository.findByIssAndClientId("iss-1", "client-id-1")).thenReturn(new ArrayList<>());
+
+        assertEquals(TextConstants.LTI3ERROR, lti3Controller.lti3(req, model));
+    }
 
     private static String expectedHash() {
         return Hashing.sha256().hashString(ID_TOKEN + HASH_STATE + NONCE, StandardCharsets.UTF_8).toString();

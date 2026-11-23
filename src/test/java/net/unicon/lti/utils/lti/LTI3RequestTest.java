@@ -147,7 +147,10 @@ public class LTI3RequestTest {
                 IllegalStateException.class,
                 () -> {new LTI3Request(req, ltiDataService, false, "1234", jwsClaims);}
         );
-        verify(platformDeploymentRepository).findByIssAndClientIdAndDeploymentId(any(String.class), any(String.class), any(String.class));
+        // looked up once, then again by the registration step, which finds no platform to copy
+        verify(platformDeploymentRepository, times(2)).findByIssAndClientIdAndDeploymentId(any(String.class), any(String.class), any(String.class));
+        verify(platformDeploymentRepository).findByIssAndClientId(SAMPLE_ISS, SAMPLE_CLIENT_ID);
+        verify(platformDeploymentRepository, never()).save(any());
         assertEquals("PlatformDeployment does not exist or is duplicated for issuer: https://platform-lms.com, clientId: sample-client-id, and deploymentId: sample-deployment-id", exception.getMessage());
     }
 
@@ -313,9 +316,78 @@ public class LTI3RequestTest {
 
     }
 
+    @Test
+    public void testLTI3RequestRegistersAnUnknownDeploymentOfAKnownPlatform() {
+        // the first launch from the installation a course copy creates; the id_token is already validated
+        when(req.getParameter("cookies")).thenReturn("false");
+        PlatformDeployment registered = new PlatformDeployment();
+        when(platformDeploymentRepository.findByIssAndClientIdAndDeploymentId(any(String.class), any(String.class), any(String.class)))
+            .thenReturn(new ArrayList<>(), new ArrayList<>(), List.of(registered));
+        PlatformDeployment template = new PlatformDeployment();
+        template.setIss(SAMPLE_ISS);
+        template.setClientId(SAMPLE_CLIENT_ID);
+        template.setOidcEndpoint("https://sso.example.com/authorize");
+        when(platformDeploymentRepository.findByIssAndClientId(SAMPLE_ISS, SAMPLE_CLIENT_ID)).thenReturn(List.of(template));
+        when(platformDeploymentRepository.save(any(PlatformDeployment.class))).thenReturn(registered);
+        when(claims.getIssuer()).thenReturn(SAMPLE_ISS);
+        when(claims.getAudience()).thenReturn(SAMPLE_CLIENT_ID_SET);
+        when(claims.get(eq(LtiStrings.LTI_DEPLOYMENT_ID))).thenReturn(SAMPLE_DEPLOYMENT_ID);
 
+        // gets past the deployment check to the message type check
+        IllegalStateException exception = Assertions.assertThrows(IllegalStateException.class, () -> new LTI3Request(req, ltiDataService, false, "1234", jwsClaims));
+        assertTrue(exception.getMessage().startsWith("Request is not a valid LTI3 request"), exception.getMessage());
 
+        ArgumentCaptor<PlatformDeployment> saved = ArgumentCaptor.forClass(PlatformDeployment.class);
+        verify(platformDeploymentRepository).save(saved.capture());
+        assertEquals(SAMPLE_DEPLOYMENT_ID, saved.getValue().getDeploymentId());
+    }
 
+    @Test
+    public void testRegisterDeploymentCopiesThePlatformSettings() {
+        PlatformDeployment template = new PlatformDeployment();
+        template.setKeyId(7L);
+        template.setIss("https://canvas.instructure.com");
+        template.setClientId("client-1");
+        template.setOidcEndpoint("https://sso.example.com/authorize");
+        template.setJwksEndpoint("https://sso.example.com/jwks");
+        template.setoAuth2TokenUrl("https://sso.example.com/token");
+        template.setoAuth2TokenAud("token-aud");
+        template.setDeploymentId("284:original");
+        when(platformDeploymentRepository.findByIssAndClientIdAndDeploymentId("https://canvas.instructure.com", "client-1", "285:copy")).thenReturn(new ArrayList<>());
+        when(platformDeploymentRepository.findByIssAndClientId("https://canvas.instructure.com", "client-1")).thenReturn(List.of(template));
+        when(platformDeploymentRepository.save(any(PlatformDeployment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        List<PlatformDeployment> result = LTI3Request.registerDeployment(platformDeploymentRepository, "https://canvas.instructure.com", "client-1", "285:copy");
+
+        assertEquals(1, result.size());
+        PlatformDeployment created = result.get(0);
+        assertEquals("285:copy", created.getDeploymentId());
+        assertEquals("https://canvas.instructure.com", created.getIss());
+        assertEquals("client-1", created.getClientId());
+        assertEquals("https://sso.example.com/authorize", created.getOidcEndpoint());
+        assertEquals("https://sso.example.com/jwks", created.getJwksEndpoint());
+        assertEquals("https://sso.example.com/token", created.getoAuth2TokenUrl());
+        assertEquals("token-aud", created.getoAuth2TokenAud());
+        assertEquals(0L, created.getKeyId());
+    }
+
+    @Test
+    public void testRegisterDeploymentReturnsOneRegisteredMeanwhile() {
+        PlatformDeployment existing = new PlatformDeployment();
+        when(platformDeploymentRepository.findByIssAndClientIdAndDeploymentId("https://canvas.instructure.com", "client-1", "285:copy")).thenReturn(List.of(existing));
+
+        assertEquals(List.of(existing), LTI3Request.registerDeployment(platformDeploymentRepository, "https://canvas.instructure.com", "client-1", "285:copy"));
+        verify(platformDeploymentRepository, never()).save(any());
+    }
+
+    @Test
+    public void testRegisterDeploymentDoesNothingForAnUnknownPlatform() {
+        when(platformDeploymentRepository.findByIssAndClientIdAndDeploymentId("https://someone-else.example.com", "client-1", "285:copy")).thenReturn(new ArrayList<>());
+        when(platformDeploymentRepository.findByIssAndClientId("https://someone-else.example.com", "client-1")).thenReturn(new ArrayList<>());
+
+        assertTrue(LTI3Request.registerDeployment(platformDeploymentRepository, "https://someone-else.example.com", "client-1", "285:copy").isEmpty());
+        verify(platformDeploymentRepository, never()).save(any());
+    }
 
 
     private static final String NONCE = "launch-nonce";

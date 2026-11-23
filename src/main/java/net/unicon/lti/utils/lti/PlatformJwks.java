@@ -20,7 +20,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Platforms' public keys, fetched from their JWKS endpoints and cached, so validating a launch or a
- * service token doesn't download the key set every time. Nimbus's key source refreshes the cache on its
+ * notice doesn't download the key set every time. Nimbus's key source refreshes the cache on its
  * own schedule, and early when a token names a key it doesn't have yet, which is how a platform
  * rotating its keys gets picked up.
  */

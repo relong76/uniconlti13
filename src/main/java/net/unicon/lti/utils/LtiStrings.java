@@ -85,6 +85,15 @@ public class LtiStrings {
 
     //CONTEXT
     public static final String LTI_CONTEXT = "https://purl.imsglobal.org/spec/lti/claim/context";
+
+    // LTI Platform Notification Service (PNS)
+    public static final String LTI_PLATFORM_NOTIFICATION_SERVICE = "https://purl.imsglobal.org/spec/lti/claim/platformnotificationservice";
+    public static final String LTI_PNS_URL = "platform_notification_service_url";
+    public static final String LTI_PNS_NOTICE_TYPES = "notice_types_supported";
+    public static final String LTI_PNS_SCOPE = "https://purl.imsglobal.org/spec/lti/scope/noticehandlers";
+    public static final String LTI_NOTICE = "https://purl.imsglobal.org/spec/lti/claim/notice";
+    public static final String LTI_ORIGIN_CONTEXTS = "https://purl.imsglobal.org/spec/lti/claim/origin_contexts";
+    public static final String LTI_NOTICE_TYPE_CONTEXT_COPY = "LtiContextCopyNotice";
     public static final String LTI_CONTEXT_ID = "id";
     public static final String LTI_CONTEXT_TYPE = "type";
     public static final String LTI_CONTEXT_LABEL = "label";

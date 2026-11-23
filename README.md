@@ -167,3 +167,20 @@ record matches the values the platform sent. Create one with exactly those value
 
 Canvas note: use Canvas's domain-agnostic `authorize_redirect` endpoint above rather than an institution-specific
 `https://INSTITUTION.instructure.com/api/lti/authorize`, which is being deprecated.
+
+Course Copy Notifications
+-------------------------
+The tool accepts the LTI Platform Notification Service `LtiContextCopyNotice` a platform sends when course content that
+includes the tool is copied into another course.
+
+1. Add the `https://purl.imsglobal.org/spec/lti/scope/noticehandlers` scope to the tool's registration on the platform
+   (in Canvas, the developer key's scopes).
+2. Launch the tool once from a course. When the launch carries the `platformnotificationservice` claim and it lists
+   `LtiContextCopyNotice`, the tool registers its handler, `{domain.url}/notices`, with the platform in the background.
+   It registers once per deployment, and again only if the handler URL or the platform's notice service URL changes.
+3. Copy the course. The platform posts the notice to `/notices`; the tool checks its signature against the platform's
+   JWKS and records which course was copied into which.
+
+The handler has to be reachable from the platform without a login, so locally it needs the Tailscale Funnel (or another
+tunnel) described above. Received notices are listed, newest first, at `/config/notices/context-copy` (admin login).
+
